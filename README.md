@@ -14,14 +14,14 @@ Upload a PDF or text document, then ask questions — the app retrieves relevant
 │  (HTML)   │◀──────│   Backend     │◀──────│  + FAISS   │
 └──────────┘       └──────────────┘       └────────────┘
                           │                       │
-                     Upload doc              OpenAI API
-                     /query                 (embeddings + chat)
+                     Upload doc            Groq API (LLM)
+                     /query             HuggingFace (embeddings)
 ```
 
 ### How RAG Works (simplified)
 
 1. **Upload** — The document is split into small overlapping chunks.
-2. **Embed** — Each chunk is converted to a vector using OpenAI Embeddings.
+2. **Embed** — Each chunk is converted to a vector using HuggingFace `all-MiniLM-L6-v2` (runs locally, no API key needed).
 3. **Store** — Vectors are stored in an in-memory FAISS index.
 4. **Query** — The user's question is embedded, the top-k similar chunks are retrieved, and passed as context to the LLM which generates an answer.
 
@@ -36,6 +36,7 @@ RAG/
 ├── main.py              # FastAPI backend
 ├── static/
 │   └── index.html       # Frontend
+├── uploads/             # Uploaded files stored here
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -55,11 +56,20 @@ source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Set your OpenAI API key
+> Note: The first run will download the HuggingFace embedding model (~90 MB).
+
+### 4. Set your Groq API key
 
 ```bash
 cp .env.example .env
-# Edit .env and paste your real API key
+# Edit .env and paste your real Groq API key
+```
+
+Get a free API key at https://console.groq.com
+
+Your `.env` should look like:
+```
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
 ### 5. Run the app
@@ -85,16 +95,18 @@ Open **http://127.0.0.1:8000** in your browser.
 | Concept | Where in code |
 |---|---|
 | Document loading | `load_document()` — uses LangChain's `PyPDFLoader` / `TextLoader` |
-| Text chunking | `build_vector_store()` — `RecursiveCharacterTextSplitter` |
-| Embeddings | `OpenAIEmbeddings()` converts text → vectors |
-| Vector store | `FAISS.from_documents()` — similarity search index |
-| Retrieval chain | `RetrievalQA.from_chain_type()` — retrieves context + generates answer |
-| API endpoint | FastAPI `@app.post("/query")` |
+| Text chunking | `build_vector_store()` — `RecursiveCharacterTextSplitter` (chunk_size=1000, overlap=200) |
+| Embeddings | `HuggingFaceEmbeddings("all-MiniLM-L6-v2")` — runs locally, converts text → vectors |
+| Vector store | `FAISS.from_documents()` — in-memory similarity search index |
+| Retrieval chain | `RetrievalQA.from_chain_type()` — retrieves top-3 chunks + generates answer |
+| LLM | `ChatGroq(model="llama-3.3-70b-versatile")` — fast inference via Groq API |
+| API endpoint | FastAPI `@app.post("/upload")` and `@app.post("/query")` |
 
 ---
 
 ## Notes
 
 - This uses **in-memory** FAISS — data is lost on restart.
-- Uses `gpt-3.5-turbo` by default. Change the model in `get_qa_chain()`.
+- Uses `llama-3.3-70b-versatile` via Groq. Change the model in `get_qa_chain()`.
+- Embeddings run **locally** via HuggingFace — no extra API key needed for embeddings.
 - For production, add authentication, persistent storage, and rate limiting.

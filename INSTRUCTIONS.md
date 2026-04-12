@@ -186,7 +186,7 @@ Refer to the hints, line descriptions, and documentation links below.
 5. Save: open `UPLOAD_DIR / safe_name` in `"wb"` mode, use `shutil.copyfileobj(file.file, f)`.
 6. Call `load_document(str(file_path))` and `build_vector_store(documents)`.
 7. Wrap step 6 in try/except, raising `HTTPException(500, ...)` on failure.
-8. Return `{"message": f"'{safe_name}' uploaded and indexed successfully.", "pages": len(documents)}`.
+8. Return `{"message": f"'{safe_name}' uploaded successfully.", "pages": len(documents)}`.
 
 **Hints:**
 - `Path(filename).name` prevents path-traversal attacks.

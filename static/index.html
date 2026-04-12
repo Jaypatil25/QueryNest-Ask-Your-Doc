@@ -3,90 +3,426 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RAG Application</title>
+    <title>QueryNest | Ask Your Doc</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="/public/favicon.png" />
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px; }
-        .container { max-width: 720px; width: 100%; }
-        h1 { text-align: center; margin-bottom: 24px; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-        .card h2 { margin-bottom: 12px; font-size: 1.1rem; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8f9fb;
+            color: #111827;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-        label { font-weight: 600; display: block; margin-bottom: 6px; }
-        input[type="file"] { margin-bottom: 12px; }
-        input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
-        button { padding: 10px 20px; border: none; border-radius: 8px; background: #4f46e5; color: #fff; font-size: 1rem; cursor: pointer; margin-top: 8px; }
-        button:hover { background: #4338ca; }
-        button:disabled { opacity: .5; cursor: not-allowed; }
+        /* ── Logo ── */
+        .logo-wrap {
+            display: flex;
+            justify-content: center;
+        }
+        .logo-wrap img {
+            height: 160px;
+            width: 160px;
+            object-fit: contain;
+        }
 
-        .status { margin-top: 10px; padding: 10px; border-radius: 8px; display: none; }
-        .status.success { display: block; background: #ecfdf5; color: #065f46; }
-        .status.error { display: block; background: #fef2f2; color: #991b1b; }
+        /* ── Page wrapper ── */
+        .page {
+            width: 100%;
+            max-width: 900px;
+            padding: 1px ;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
 
-        #answer-box { margin-top: 12px; white-space: pre-wrap; line-height: 1.6; }
-        .source { background: #f1f5f9; padding: 10px; border-radius: 8px; margin-top: 8px; font-size: .9rem; }
-        .source-label { font-weight: 600; margin-bottom: 4px; }
-        .loader { display: none; margin-top: 10px; font-style: italic; color: #666; }
+        /* ── Header ── */
+        header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #eef2ff;
+            color: #4f46e5;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 999px;
+            border: 1px solid #c7d2fe;
+        }
+        header h1 {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #111827;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+        }
+        header p {
+            color: #6b7280;
+            font-size: 0.95rem;
+            max-width: 420px;
+            line-height: 1.6;
+        }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+        }
+        .grid-full { grid-column: 1 / -1; }
+        @media (max-width: 640px) {
+            .grid { grid-template-columns: 1fr; }
+            .grid-full { grid-column: 1; }
+            header h1 { font-size: 1.6rem; }
+        }
+
+        /* ── Card ── */
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 28px;
+            box-shadow: 0 1px 6px rgba(0,0,0,.04);
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .step-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #4f46e5;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .card-header h2 {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* ── Upload zone ── */
+        .upload-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: #4f46e5;
+            background: #f5f3ff;
+        }
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .upload-icon { font-size: 2rem; margin-bottom: 10px; }
+        .upload-zone p {
+            font-size: 0.85rem;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        .upload-zone strong { color: #4f46e5; }
+        .file-name {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #4f46e5;
+            display: none;
+            word-break: break-all;
+        }
+
+        /* ── Button ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 11px 20px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .18s, opacity .18s, box-shadow .18s;
+        }
+        .btn-primary { background: #4f46e5; color: #fff; }
+        .btn-primary:hover { background: #4338ca; box-shadow: 0 4px 12px rgba(79,70,229,.3); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+        .btn-full { width: 100%; margin-top: 14px; }
+
+        /* ── Status ── */
+        .status {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.83rem;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            gap: 7px;
+        }
+        .status.success { display: flex; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .status.error   { display: flex; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        /* ── How to use list ── */
+        .how-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .how-list li {
+            display: grid;
+            grid-template-columns: 32px 1fr;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.86rem;
+            color: #374151;
+            line-height: 1.4;
+        }
+        .how-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #eef2ff;
+            color: #4f46e5;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Ask section ── */
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-row input[type="text"] {
+            flex: 1;
+            padding: 11px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+            color: #111827;
+            background: #fff;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .input-row input[type="text"]::placeholder { color: #9ca3af; }
+        .input-row input[type="text"]:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+        }
+        .input-row .btn { margin-top: 0; white-space: nowrap; }
+
+        /* ── Loader ── */
+        .loader {
+            display: none;
+            align-items: center;
+            gap: 9px;
+            margin-top: 16px;
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+        .loader.active { display: flex; }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #4f46e5;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Answer ── */
+        #answer-box {
+            margin-top: 16px;
+            padding: 18px 20px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            color: #1f2937;
+            display: none;
+        }
+
+        /* ── Sources ── */
+        #sources { margin-top: 14px; }
+        .source-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9ca3af;
+            margin-bottom: 10px;
+        }
+        .source {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-left: 3px solid #4f46e5;
+            padding: 11px 14px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 0.83rem;
+            color: #374151;
+            line-height: 1.55;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>RAG — Ask Your Document</h1>
 
-    <!-- Upload Section -->
-    <div class="card">
-        <h2>1. Upload a Document</h2>
-        <p style="margin-bottom: 12px; color: #666;">Supports <b>.pdf</b> and <b>.txt</b> files.</p>
-        <input type="file" id="file-input" accept=".pdf,.txt" />
-        <br />
-        <button id="upload-btn" onclick="uploadFile()">Upload</button>
-        <div id="upload-status" class="status"></div>
+<div class="page">
+
+    <!-- Logo -->
+    <div class="logo-wrap">
+        <img src="/public/QueryNest.png" alt="QueryNest" />
     </div>
 
-    <!-- Query Section -->
-    <div class="card">
-        <h2>2. Ask a Question</h2>
-        <input type="text" id="question" placeholder="e.g. What is the main topic of this document?" />
-        <button id="ask-btn" onclick="askQuestion()">Ask</button>
-        <div class="loader" id="loader">Thinking…</div>
-        <div id="answer-box"></div>
-        <div id="sources"></div>
+    <!-- Header -->
+    <header>
+        <div class="badge">✦ Retrieval-Augmented Generation</div>
+        <h1>Ask Your Document</h1>
+        <p>Upload a PDF or text file, then ask anything about it — powered by QueryNest.</p>
+    </header>
+
+    <!-- Cards grid -->
+    <div class="grid">
+
+        <!-- Upload -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-dot">1</div>
+                <h2>Upload a Document</h2>
+            </div>
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" id="file-input" accept=".pdf,.txt" onchange="onFileChange(this)" />
+                <div class="upload-icon">📄</div>
+                <p>Drag & drop or <strong>browse</strong></p>
+                <p style="margin-top:4px; font-size:0.78rem; color:#9ca3af;">PDF or TXT · max 10 MB</p>
+                <div class="file-name" id="file-name"></div>
+            </div>
+            <button class="btn btn-primary btn-full" id="upload-btn" onclick="uploadFile()">Upload Document</button>
+            <div id="upload-status" class="status"></div>
+        </div>
+
+        <!-- How to use -->
+        <div class="card" style="background:#fafafa;">
+            <div class="card-header">
+                <div class="step-dot" style="background:#10b981;">✦</div>
+                <h2>How to use</h2>
+            </div>
+            <ul class="how-list">
+                <li><span class="how-num">01</span><span>Click Upload Document and select a PDF or TXT file.</span></li>
+                <li><span class="how-num">02</span><span>Wait for the success message.</span></li>
+                <li><span class="how-num">03</span><span>Type your question and press Ask or hit Enter.</span></li>
+                <li><span class="how-num">04</span><span>Read the AI answer and review the source chunks below.</span></li>
+            </ul>
+        </div>
+
+        <!-- Ask -->
+        <div class="card grid-full">
+            <div class="card-header">
+                <div class="step-dot">2</div>
+                <h2>Ask a Question</h2>
+            </div>
+            <div class="input-row">
+                <input type="text" id="question" placeholder="e.g. What is the main topic of this document?" />
+                <button class="btn btn-primary" id="ask-btn" onclick="askQuestion()">Ask</button>
+            </div>
+            <div class="loader" id="loader"><div class="spinner"></div> Thinking…</div>
+            <div id="answer-box"></div>
+            <div id="sources"></div>
+        </div>
+
     </div>
 </div>
 
 <script>
+    function onFileChange(input) {
+        const nameEl = document.getElementById('file-name');
+        if (input.files.length) {
+            nameEl.textContent = input.files[0].name;
+            nameEl.style.display = 'block';
+        }
+    }
+
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', () => zone.classList.remove('drag-over'));
+
+    function setStatus(id, msg, type) {
+        const el = document.getElementById(id);
+        el.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+        el.className = 'status ' + type;
+    }
+
     async function uploadFile() {
         const fileInput = document.getElementById('file-input');
         const status = document.getElementById('upload-status');
         status.className = 'status';
-        status.style.display = 'none';
 
-        if (!fileInput.files.length) {
-            status.textContent = 'Please select a file first.';
-            status.className = 'status error';
-            return;
-        }
+        if (!fileInput.files.length) { setStatus('upload-status', 'Please select a file first.', 'error'); return; }
 
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
 
-        document.getElementById('upload-btn').disabled = true;
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true;
+        btn.textContent = 'Uploading…';
+
         try {
             const res = await fetch('/upload', { method: 'POST', body: formData });
             const data = await res.json();
-            if (res.ok) {
-                status.textContent = data.message;
-                status.className = 'status success';
-            } else {
-                status.textContent = data.detail || 'Upload failed.';
-                status.className = 'status error';
-            }
+            res.ok ? setStatus('upload-status', data.message, 'success')
+                   : setStatus('upload-status', data.detail || 'Upload failed.', 'error');
         } catch (err) {
-            status.textContent = 'Network error: ' + err.message;
-            status.className = 'status error';
+            setStatus('upload-status', 'Network error: ' + err.message, 'error');
         }
-        document.getElementById('upload-btn').disabled = false;
+
+        btn.disabled = false;
+        btn.textContent = 'Upload Document';
     }
 
     async function askQuestion() {
@@ -95,12 +431,12 @@
         const sourcesBox = document.getElementById('sources');
         const loader = document.getElementById('loader');
 
+        answerBox.style.display = 'none';
         answerBox.textContent = '';
         sourcesBox.innerHTML = '';
-
         if (!question) return;
 
-        loader.style.display = 'block';
+        loader.classList.add('active');
         document.getElementById('ask-btn').disabled = true;
 
         try {
@@ -113,33 +449,25 @@
 
             if (res.ok) {
                 answerBox.textContent = data.answer;
+                answerBox.style.display = 'block';
 
-                if (data.sources && data.sources.length) {
-                    const heading = document.createElement('div');
-                    heading.className = 'source-label';
-                    heading.textContent = 'Sources:';
-                    sourcesBox.appendChild(heading);
-
-                    data.sources.forEach((s, i) => {
-                        const div = document.createElement('div');
-                        div.className = 'source';
-                        div.textContent = `[${i + 1}] ${s.content}`;
-                        sourcesBox.appendChild(div);
-                    });
+                if (data.sources?.length) {
+                    // sources hidden
                 }
             } else {
-                answerBox.textContent = ' ' + (data.detail || 'Something went wrong.');
+                answerBox.textContent = data.detail || 'Something went wrong.';
+                answerBox.style.display = 'block';
             }
         } catch (err) {
             answerBox.textContent = 'Network error: ' + err.message;
+            answerBox.style.display = 'block';
         }
 
-        loader.style.display = 'none';
+        loader.classList.remove('active');
         document.getElementById('ask-btn').disabled = false;
     }
 
-    // Allow pressing Enter to ask
-    document.getElementById('question').addEventListener('keydown', (e) => {
+    document.getElementById('question').addEventListener('keydown', e => {
         if (e.key === 'Enter') askQuestion();
     });
 </script>

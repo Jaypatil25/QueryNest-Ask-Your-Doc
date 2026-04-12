@@ -74,6 +74,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
@@ -85,7 +86,8 @@ from langchain.chains import RetrievalQA
 
 load_dotenv()
 
-app = FastAPI(title="RAG Application")
+app = FastAPI(title="QueryNest")
+app.mount("/public", StaticFiles(directory="public"), name="public")
 
 # --------------- state ---------------
 UPLOAD_DIR = Path("uploads")
@@ -178,7 +180,7 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
     return {
-        "message": f"'{safe_name}' uploaded and indexed successfully.",
+        "message": f"'{safe_name}' uploaded successfully.",
         "pages": len(documents)
     }
 
