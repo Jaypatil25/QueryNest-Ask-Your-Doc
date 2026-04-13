@@ -95,8 +95,13 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 vector_store = None
 
-# Load once at startup — avoids 90MB download inside a request (causes timeout on Render)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+_embeddings = None
+
+def get_embeddings():
+    global _embeddings
+    if _embeddings is None:
+        _embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return _embeddings
 
 
 # --------------- helpers ---------------
@@ -122,7 +127,7 @@ def build_vector_store(documents):
     
     chunks = splitter.split_documents(documents)
     
-    store = FAISS.from_documents(chunks, embeddings)
+    store = FAISS.from_documents(chunks, get_embeddings())
     return store
 
 
