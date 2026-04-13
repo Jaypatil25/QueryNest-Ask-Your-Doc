@@ -87,11 +87,10 @@ from langchain.chains import RetrievalQA
 load_dotenv()
 
 app = FastAPI(title="QueryNest")
-app.mount("/public", StaticFiles(directory="public"), name="public")
 
 # --------------- state ---------------
 UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 vector_store = None
 
@@ -208,4 +207,4 @@ async def query_document(req: QueryRequest):
     return {
         "answer": result["result"],
         "sources": sources
-    } 
+        }
