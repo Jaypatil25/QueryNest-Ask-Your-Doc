@@ -87,12 +87,16 @@ from langchain.chains import RetrievalQA
 load_dotenv()
 
 app = FastAPI(title="QueryNest")
+app.mount("/public", StaticFiles(directory="public"), name="public")
 
 # --------------- state ---------------
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 vector_store = None
+
+# Load once at startup — avoids 90MB download inside a request (causes timeout on Render)
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 
 # --------------- helpers ---------------
@@ -117,10 +121,6 @@ def build_vector_store(documents):
     )
     
     chunks = splitter.split_documents(documents)
-    
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2"
-    )
     
     store = FAISS.from_documents(chunks, embeddings)
     return store
